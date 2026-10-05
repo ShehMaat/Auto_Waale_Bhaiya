@@ -1,0 +1,11 @@
+FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+
+WORKDIR /app
+COPY pyproject.toml .
+RUN pip install uv && uv pip install --system -r pyproject.toml
+
+COPY . .
+ENV PYTHONPATH=/app
+# Run as non-root user (playwright image has pwuser)
+USER pwuser
+CMD ["celery", "-A", "apps.api.app.core.celery_app", "worker", "-Q", "browser", "--loglevel=info", "--concurrency=2"]

@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  static-analysis:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      - name: Run Ruff
+        run: uv run ruff check .
+      - name: Run Mypy
+        run: uv run mypy packages apps
+        
+  test:
+    name: Full Regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+      - name: Install dependencies
+        run: uv sync
+      - name: Run Pytest
+        run: uv run pytest --cov=packages --cov=apps
+
+  database-migration:
+    name: Alembic Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Alembic Check
+        run: uv run alembic check
+      - name: Run Alembic Upgrade Head
+        run: uv run alembic upgrade head
+
+  deployment-dry-run:
+    name: Deployment Configuration Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Compose File
+        run: docker compose -f deployment/docker-compose.prod.yml config
+
+  deploy:
+    name: Production Deployment (Manual)
+    runs-on: ubuntu-latest
+    needs: [static-analysis, test, database-migration, deployment-dry-run]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Deployment Instructions
+        run: |
+          echo "Production deployment is manual."
+          echo "CI validates deployment artifacts but does not automatically deploy production."

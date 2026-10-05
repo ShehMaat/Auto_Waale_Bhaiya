@@ -1,0 +1,185 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: ai_job_agent_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:rw
+    depends_on:
+      api_blue:
+        condition: service_started
+      api_green:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  api_blue:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.api
+    image: ai_job_agent_api:latest
+    container_name: ai_job_agent_api_blue
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_job_agent
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api_green:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.api
+    image: ai_job_agent_api:latest
+    container_name: ai_job_agent_api_green
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_job_agent
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/ready')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  frontend_blue:
+    build:
+      context: ../apps/web
+      dockerfile: ../../deployment/Dockerfile.frontend
+    image: ai_job_agent_frontend:latest
+    container_name: ai_job_agent_frontend_blue
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  frontend_green:
+    build:
+      context: ../apps/web
+      dockerfile: ../../deployment/Dockerfile.frontend
+    image: ai_job_agent_frontend:latest
+    container_name: ai_job_agent_frontend_green
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  celery_worker_blue:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.celery
+    image: ai_job_agent_celery:latest
+    container_name: ai_job_agent_celery_blue
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_job_agent
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  celery_worker_green:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.celery
+    image: ai_job_agent_celery:latest
+    container_name: ai_job_agent_celery_green
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/ai_job_agent
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  browser_worker_blue:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.browser
+    image: ai_job_agent_browser:latest
+    container_name: ai_job_agent_browser_blue
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  browser_worker_green:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.browser
+    image: ai_job_agent_browser:latest
+    container_name: ai_job_agent_browser_green
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  db:
+    image: ankane/pgvector:latest
+    container_name: ai_job_agent_db_prod
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ai_job_agent
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ai_job_agent"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai_job_agent_redis_prod
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: cgr.dev/chainguard/minio@sha256:4cf4831a2bbcf13ddca09c1cbcc9faff716dd3c4247e0babc32864b8ee8e0034
+    container_name: ai_job_agent_minio_prod
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data
+    volumes:
+      - minio_data_prod:/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:
+  minio_data_prod:
