@@ -15,11 +15,11 @@ fi
 echo "Rolling back to $SAFE_ENV (removing $BROKEN_ENV)"
 
 # Ensure NGINX points to safe environment
-echo "upstream api_upstream { server api_$SAFE_ENV:8000; }" > deployment/nginx/conf.d/upstream.conf
+echo -e "upstream api_upstream { server api_$SAFE_ENV:8000; }\nupstream frontend_upstream { server frontend_$SAFE_ENV:3000; }" > deployment/nginx/conf.d/upstream.conf
 docker exec ai_job_agent_nginx nginx -s reload || true
 
 # Stop the broken environment
-docker compose -f deployment/docker-compose.prod.yml stop api_$BROKEN_ENV celery_worker_$BROKEN_ENV browser_worker_$BROKEN_ENV
-docker compose -f deployment/docker-compose.prod.yml rm -f api_$BROKEN_ENV celery_worker_$BROKEN_ENV browser_worker_$BROKEN_ENV
+docker compose -f deployment/docker-compose.prod.yml stop frontend_$BROKEN_ENV api_$BROKEN_ENV celery_worker_$BROKEN_ENV browser_worker_$BROKEN_ENV
+docker compose -f deployment/docker-compose.prod.yml rm -f frontend_$BROKEN_ENV api_$BROKEN_ENV celery_worker_$BROKEN_ENV browser_worker_$BROKEN_ENV
 
 echo "Rollback complete."

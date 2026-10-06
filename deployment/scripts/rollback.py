@@ -32,7 +32,7 @@ def main():
     # 1. Update NGINX to safe env
     os.makedirs("deployment/nginx/conf.d", exist_ok=True)
     with open("deployment/nginx/conf.d/upstream.conf", "w") as f:
-        f.write(f"upstream api_upstream {{\n    server api_{safe_env}:8000;\n}}\n")
+        f.write(f"upstream api_upstream {{\n    server api_{safe_env}:8000;\n}}\nupstream frontend_upstream {{\n    server frontend_{safe_env}:3000;\n}}\n")
         
     try:
         run_cmd("docker exec ai_job_agent_nginx nginx -s reload")

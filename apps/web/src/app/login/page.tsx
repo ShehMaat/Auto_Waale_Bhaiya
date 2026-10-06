@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { setToken } from "@/lib/api";
+import { setToken, API_BASE } from "@/lib/api";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -17,7 +17,7 @@ export default function LoginPage() {
       formData.append("username", email);
       formData.append("password", password);
 
-      const res = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: formData,

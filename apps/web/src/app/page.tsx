@@ -27,7 +27,7 @@ export default function Dashboard() {
     Promise.all([
       api.get("/applications").catch(() => []),
       api.get("/jobs/ranked").catch(() => ({ jobs: [] })),
-      fetchWithAuth("http://localhost:8000/ready").catch((e) => ({ status: "error", message: e.message }))
+      fetch("/ready").then(r => r.json()).catch((e) => ({ status: "error", message: e.message }))
     ]).then(([appsData, jobsData, healthData]) => {
       setApplications(appsData);
       setJobs(jobsData.jobs || []);

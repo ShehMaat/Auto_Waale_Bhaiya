@@ -66,8 +66,7 @@ services:
       dockerfile: ../../deployment/Dockerfile.frontend
     image: ai_job_agent_frontend:latest
     container_name: ai_job_agent_frontend_blue
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost
+    environment: []
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 5s
@@ -80,8 +79,7 @@ services:
       dockerfile: ../../deployment/Dockerfile.frontend
     image: ai_job_agent_frontend:latest
     container_name: ai_job_agent_frontend_green
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost
+    environment: []
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
       interval: 5s
